@@ -1,12 +1,14 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {ApiError} from "../utils/ApiError.js"
-import { Consumer} from "../models/consumer.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import { ApiError } from "../utils/ApiError.js"
+import { Consumer } from "../models/consumer.model.js"
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
 import axios from "axios";
 import otpGenerator from 'otp-generator';
+import Razorpay from "razorpay";
+
 
 const registerConsumer = asyncHandler(async (req, res) => {
     const { name, phoneNumber, address, aadhar, dlno } = req.body;
@@ -17,12 +19,12 @@ const registerConsumer = asyncHandler(async (req, res) => {
     }
 
     // Check if a consumer with the same phone number, aadhar, or dlno already exists
-    const existedUser = await Consumer.findOne({ 
+    const existedUser = await Consumer.findOne({
         $or: [
             { phoneNumber },
             { aadhar },
             { dlno }
-        ] 
+        ]
     });
 
     if (existedUser) {
@@ -291,9 +293,9 @@ const sendConsumerOtp = asyncHandler(async (req, res) => {
         const phoneNumber = req.body.phoneNumber;
         const existedUser = await Consumer.findOne({ phoneNumber })
 
-    if (existedUser) {
-        throw new ApiError(409, " phoneNumber already exists")
-    }
+        if (existedUser) {
+            throw new ApiError(409, " phoneNumber already exists")
+        }
         // sent otp on mobile number
         await axios.get('https://www.fast2sms.com/dev/bulkV2', {
             params: {
@@ -306,21 +308,45 @@ const sendConsumerOtp = asyncHandler(async (req, res) => {
 
         // console.log('sent otp')
         return res.status(201).json(
-            new ApiResponse(201, {otp}, "OTP sent successfully!"));
+            new ApiResponse(201, { otp }, "OTP sent successfully!"));
     } catch (error) {
         console.error('Error sending OTP:', error);
         res.status(400).json(
             // { success: false, message: 'Failed to send OTP.' }
-            new ApiResponse(400, {error}, "Failed to send OTP")
+            new ApiResponse(400, { error }, "Failed to send OTP")
         );
     }
 })
 
+const instance = new Razorpay({
+    key_id: process.env.RAZORPAY_API_KEY,
+    key_secret: process.env.RAZORPAY_APT_SECRET,
+});
+
+const checkout = async (req, res) => {
+    const options = {
+        amount: Number(req.body.amount * 100),
+        currency: "INR",
+        // note_key: "email sent succefully to TWCPL"
+
+    };
+    const order = await instance.orders.create(options);
+
+    res.status(200).json({
+        success: true,
+        order,
+    });
+};
+
+async function bookVehicle(req, res) {
+    const { dlno, uploadphoto, selectkit, addons, waveamount } = req.body;
+
+}
 
 
 
 
 
 export {
-    registerConsumer, sendConsumerOtp, loginConsumer,login
+    registerConsumer, sendConsumerOtp, loginConsumer, login, checkout
 }
