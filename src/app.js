@@ -30,7 +30,9 @@ app.use("/api/v1/admin", adminRouter)
 
 app.use("/api/v1/visitor", consumerRouter)
 app.use("/api/v1/vsp", vspRouter)
-// http://localhost:8000/api/v1/users/register
-// http://localhost:8000/api/v1/consumer/signup
+
+app.get("/api/getkey", (req, res) =>
+    res.status(200).json({ key: process.env.RAZORPAY_API_KEY })
+);
 
 export { app }
